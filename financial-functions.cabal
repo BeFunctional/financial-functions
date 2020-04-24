@@ -22,7 +22,7 @@ source-repository head
   location:            https://github.com/befunctional/financial-functions.git
 
 common common-options
-  build-depends:       base >= 4.12.0.0 && < 4.14
+  build-depends:       base >= 4.11.0.0 && < 4.14
   
   ghc-options:         -Wall
                        -Wcompat
@@ -44,7 +44,10 @@ common common-options
 library
   import:              common-options
   hs-source-dirs:      src
-  exposed-modules:     FinancialFunctions
+  exposed-modules:     Numeric.Financial
+  build-depends:       ad
+                      , data-default-class 
+                      , math-functions
 
 test-suite financial-functions-test
   import:              common-options
@@ -52,6 +55,21 @@ test-suite financial-functions-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       financial-functions
+                      , tasty 
+                      , tasty-quickcheck
+                      , QuickCheck 
+
+  ghc-options:         -threaded
+                       -rtsopts
+                       -with-rtsopts=-N
+
+test-suite financial-functions-doctest
+  import:              common-options
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Doctest.hs
+  build-depends:       financial-functions
+                      , doctest
   ghc-options:         -threaded
                        -rtsopts
                        -with-rtsopts=-N

@@ -22,7 +22,7 @@ source-repository head
   location:            https://github.com/befunctional/financial-functions.git
 
 common common-options
-  build-depends:       base >= 4.11.0.0 && < 4.14
+  build-depends:       base >= 4.12.0.0 && < 4.14
   
   ghc-options:         -Wall
                        -Wcompat

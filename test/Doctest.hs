@@ -1,15 +1,17 @@
 module Main
-    ( main
-    )
-    where
+  ( main,
+  )
+where
+
 import Test.DocTest
 
 main :: IO ()
-main = doctest
-  [ "-XOverloadedStrings"
-  , "-XScopedTypeVariables"
-  , "-XTypeFamilies"
-  , "-XTypeApplications"
-  , "-isrc"
-  , "src/Numeric/Financial"
-  ]
+main =
+  doctest
+    [ "-XOverloadedStrings",
+      "-XScopedTypeVariables",
+      "-XTypeFamilies",
+      "-XTypeApplications",
+      "-isrc",
+      "src/Numeric/Financial"
+    ]

@@ -1,42 +1,42 @@
--- | This module defines cannoncial financial functions
--- ported from the numpy financial library.
-module Numeric.Financial where
+-- |  Expressions are derived from the following equation: `fv +
+-- pv*(1+rate)**nper + pmt*(1+rate*when)/rate*((1+rate)**nper-1) = 0` See:
+-- http://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part2.html#PV
+-- and:
+-- https://github.com/numpy/numpy/blob/v1.15.1/numpy/lib/financial.py#L287-L380
+--
+-- This module defines cannoncial financial functions ported from the numpy
+-- financial library. Financial functions for present value, future value,
+-- numper of periods, and periodic rate. Following the numpy convention,
+-- cashflows out are negative.
+module Numeric.Financial
+  ( amortizedPayments,
+    paymentParts,
+    internalRateOfReturn,
+    netPresentValue,
+    presentValue,
+    interestPayment,
+    futureValue,
+    payment,
+    principalPayment,
+  )
+where
 
 import Data.Default.Class
 import Data.Foldable
   ( foldl',
     toList,
   )
+import Data.Maybe (mapMaybe)
 import Numeric.AD.Rank1.Forward
   ( Forward,
     diff',
   )
 import Numeric.RootFinding
 
--- | Financial functions for present value, future value, numper of periods, and periodic rate.
--- Following the numpy convention, cashflows out are negative.
-
---- Expressions are derived from the following equation:
--- `fv + pv*(1+rate)**nper + pmt*(1+rate*when)/rate*((1+rate)**nper-1) = 0`
--- See:  http://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part2.html#PV
--- and: https://github.com/numpy/numpy/blob/v1.15.1/numpy/lib/financial.py#L287-L380
-
 -- | The internal rate of return of a series of cashflows.
 --
--- TODO: This is very inefficient as it iteratively attempts
+-- TODO: This is inefficient as it iteratively attempts
 -- to bracket the underlaying irr expression based on a crude guess.
--- >>> import Data.Maybe (fromJust)
--- >>> import Data.Fixed (Pico)
--- >>> realToFrac . fromJust $ internalRateOfReturn [negate 100, 39, 59, 55, 20] :: Pico
--- 0.280948421159
--- >>> realToFrac . fromJust $ internalRateOfReturn [negate 100, 0, 0, 74] :: Pico
--- -0.095495830349
--- >>> realToFrac . fromJust $ internalRateOfReturn [negate 100, 100, 0, negate 7] :: Pico
--- -0.083299666185
--- >>> realToFrac . fromJust $ internalRateOfReturn [negate 100, 100, 0, 7] :: Pico
--- 0.062058485629
--- >>> realToFrac . fromJust $ internalRateOfReturn [negate 5, 10.5, 1, negate 8, 1] :: Pico
--- 0.088598338527
 internalRateOfReturn :: (Foldable t) => t (Forward Double) -> Maybe Double
 internalRateOfReturn cashFlows
   | isFlat = Just 0.0
@@ -47,7 +47,7 @@ internalRateOfReturn cashFlows
     cfList = toList cashFlows
     isFlat = all (head cfList ==) cfList
     go p
-      | p >= 100 = error "internalRateOfReturn: Couldn't bracket underlaying function!"
+      | p >= 100 = Nothing
       | otherwise = case r p of
           NotBracketed -> go (p + 0.1)
           SearchFailed -> Nothing -- error "SearchFailed"
@@ -181,17 +181,19 @@ payment rate nper pv fv payAtBeginning
 -- >>> paymentParts (0.0824/12) (1*12) 2500 0 False 1
 -- (-200.5819236867822,-17.166666666666668)
 paymentParts ::
-  (Eq p1, Integral p3, Fractional p1, Integral p2) =>
+  (Eq p1, Fractional p1, Integral p2) =>
   p1 ->
-  p3 ->
+  p2 ->
   p1 ->
   p1 ->
   Bool ->
   p2 ->
-  (p1, p1)
+  Maybe (p1, p1)
 paymentParts rate nper pv fv payAtBeginning per
-  | per >= 1 = (ppay, ipmt)
-  | otherwise = error "paymentParts: period `per` must be >= 1"
+  | nper <= 0 = Nothing -- Invalid number of periods
+  | per < 1 = Nothing -- Period must be at least 1
+  | per > nper = Nothing -- Period cannot exceed number of periods
+  | otherwise = Just (ppay, ipmt)
   where
     pmt = payment rate nper pv fv payAtBeginning
     ipmt = interestPayment rate per nper pv fv payAtBeginning
@@ -209,9 +211,9 @@ amortizedPayments ::
   p1 ->
   Bool ->
   p2 ->
-  [(p1, p1)]
+  Maybe [(p1, p1)]
 amortizedPayments rate nper pv fv payAtBeginning p
-  | p >= 1 = pmts
-  | otherwise = error "amortizedPayments: starting period `p` must be >= 1"
+  | p >= 1 = Just pmts
+  | otherwise = Nothing
   where
-    pmts = fmap (paymentParts rate nper pv fv payAtBeginning) [p .. nper]
+    pmts = mapMaybe (paymentParts rate nper pv fv payAtBeginning) [p .. nper]

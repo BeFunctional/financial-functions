@@ -1,1 +1,2 @@
-package financial-functions
+packages: *.cabal
+tests: True
